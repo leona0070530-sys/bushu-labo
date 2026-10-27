@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>部首ラボ</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+    background: linear-gradient(135deg, #eef7ff, #f7f2ff);
+    color: #222;
+  }
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+  }
+  header {
+    text-align: center;
+    padding: 20px 10px;
+  }
+  header h1 { margin: 0 0 8px; font-size: 2rem; }
+  header p { margin: 0; color: #666; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .card {
+    background: rgba(255,255,255,.94);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 25px rgba(0,0,0,.08);
+  }
+  .menu-grid, .level-grid, .radical-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  button {
+    border: 0;
+    border-radius: 14px;
+    padding: 16px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform .15s, opacity .15s;
+    background: #e9e9e9;
+  }
+  button:hover { transform: translateY(-2px); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .main-btn { width: 100%; min-height: 110px; }
+  .blue { background: #dff0ff; }
+  .purple { background: #eee2ff; }
+  .gold { background: #fff0bd; }
+  .green { background: #ddf5e5; }
+  .back { background: #eee; margin-top: 8px; }
+  .question-kanji {
+    font-size: 6rem;
+    text-align: center;
+    margin: 10px 0 25px;
+    font-weight: bold;
+  }
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .option {
+    background: #f5f5f5;
+    border: 2px solid transparent;
+  }
+  .option:hover { border-color: #aaa; }
+  .option.correct { background: #d9f7df; border-color: #4caf68; }
+  .option.wrong { background: #ffe0e0; border-color: #e05a5a; }
+  .status {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    color: #555;
+    font-weight: bold;
+  }
+  .feedback {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 14px;
+    background: #f7f7f7;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .score-big {
+    font-size: 3rem;
+    font-weight: bold;
+    text-align: center;
+    margin: 10px 0;
+  }
+  .rank {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin: 15px 0;
+  }
+  .radical-symbol {
+    font-size: 3rem;
+    font-weight: bold;
+  }
+  .radical-card { text-align: center; cursor: pointer; }
+  .radical-card p { margin: 6px 0; }
+  .meaning {
+    background: #fafafa;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 12px 0;
+  }
+  .mistake-item {
+    background: #fff6f6;
+    border-left: 5px solid #e05a5a;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 8px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eee;
+    font-size: .9rem;
+  }
+  .small { color: #777; font-size: .9rem; }
+  footer {
+    text-align: center;
+    color: #777;
+    font-size: .8rem;
+    margin-top: 28px;
+  }
+  @media (max-width: 600px) {
+    .options { grid-template-columns: 1fr; }
+    .question-kanji { font-size: 4.5rem; }
+  }
+
+.block-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(66px,1fr));gap:9px;margin:18px 0}
+.block-tile{min-height:66px;padding:8px 4px;background:#f0e8ff;border:2px solid #d4c3f5;border-radius:13px;font-size:1.35rem;box-shadow:0 3px 0 #c8b7e7}
+.block-tile.selected{background:#ffe9a8;border-color:#e5a800;transform:translateY(-3px)}
+.block-tile.used{visibility:hidden;pointer-events:none}
+.block-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.block-actions button{flex:1}
+.block-made{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.made-kanji{background:#e0f6e7;border-radius:12px;padding:10px 14px;font-size:1.5rem;font-weight:bold}
+@media(max-width:500px){.block-board{grid-template-columns:repeat(4,minmax(0,1fr))}.block-tile{min-height:58px;font-size:1.2rem}}
+
+
+.block-tile:focus-visible{outline:3px solid #4b7bec;outline-offset:2px}
+.block-tile:disabled{opacity:.22}
+.block-timer-low{color:#c62828;font-weight:900}
+.block-end{background:#fff3cd;border-radius:12px;padding:14px;margin:12px 0;text-align:center;font-weight:bold}
+
+
+/* タイムアップ演出 */
+#timeUpOverlay {
+  position: fixed; inset: 0; z-index: 9999; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: rgba(12, 18, 38, .82); backdrop-filter: blur(5px);
+}
+#timeUpOverlay.show { display: flex; animation: overlayFade .35s ease-out; }
+#timeUpOverlay:not(.show) { pointer-events: none; }
+.timeup-panel {
+  width: min(440px, 100%); text-align: center; padding: 30px 24px;
+  border-radius: 24px; background: linear-gradient(145deg, #fff7ed, #ffedd5);
+  color: #7c2d12; box-shadow: 0 18px 70px rgba(0,0,0,.35);
+  animation: timeUpPop .55s cubic-bezier(.2,.8,.2,1.2);
+}
+.timeup-icon { font-size: 64px; line-height: 1.1; margin-bottom: 8px; animation: timeUpShake .65s ease-in-out; }
+.timeup-title { font-size: clamp(30px, 7vw, 42px); font-weight: 900; letter-spacing: .05em; margin: 4px 0 10px; }
+.timeup-score { font-size: 20px; font-weight: 800; margin: 12px 0 4px; }
+.timeup-best { font-size: 15px; margin-bottom: 12px; }
+.timeup-remaining { max-height: min(30vh, 220px); overflow: auto; margin: 0 0 16px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.78); text-align: left; font-size: 14px; }
+.timeup-remaining strong { display: block; margin-bottom: 5px; }
+.timeup-remaining ul { margin: 0; padding-left: 22px; columns: 2; column-gap: 20px; }
+.timeup-remaining li { break-inside: avoid; margin: 2px 0; }
+@keyframes overlayFade { from {opacity:0} to {opacity:1} }
+@keyframes timeUpPop { 0% {transform:scale(.72);opacity:0} 75% {transform:scale(1.04)} 100% {transform:scale(1);opacity:1} }
+@keyframes timeUpShake { 0%,100% {transform:rotate(0)} 25% {transform:rotate(-9deg)} 55% {transform:rotate(8deg)} 80% {transform:rotate(-3deg)} }
+@media (prefers-reduced-motion: reduce) {
+  #timeUpOverlay.show, .timeup-panel, .timeup-icon { animation: none !important; }
+}
+
+</style>
+<style>
+.radical-grid{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));}
+.radical-card{min-height:150px;}
+</style>
+<style>
+/* パズルは画面高に収め、ページ全体の縦スクロールをなくす */
+body.puzzle-screen{height:100dvh;overflow:hidden}
+body.puzzle-screen .app{pointer-events:none;position:fixed;inset:0;width:100%;height:100dvh;min-height:0;margin:0 auto;padding:8px 12px;display:flex;flex-direction:column}
+body.puzzle-screen header{display:none}
+body.puzzle-screen #blocks.screen.active{display:flex;flex:1;min-height:0}
+body.puzzle-screen #blocks>.card{display:flex;flex:1;flex-direction:column;min-height:0;margin:0;padding:12px 16px;overflow:hidden}
+body.puzzle-screen #blocks h2{flex:none;margin:0 0 8px;font-size:1.35rem}
+body.puzzle-screen #blockIntro{min-height:0}
+body.puzzle-screen #blockIntro h3{margin:4px 0;font-size:1rem}
+body.puzzle-screen #blockIntro ol{margin:6px 0 8px;padding-left:22px;font-size:.82rem;line-height:1.25}
+body.puzzle-screen #blockIntro li{margin:3px 0}
+body.puzzle-screen #blockIntro p{margin:6px 0;font-size:.8rem}
+body.puzzle-screen #blockIntro button{padding:9px 12px}
+body.puzzle-screen #blockPlayArea{display:flex;flex:1;flex-direction:column;min-height:0}
+body.puzzle-screen #blockPlayArea>p:first-child,
+body.puzzle-screen #blockPlayArea>.small{display:none}
+body.puzzle-screen #blockPlayArea .status{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;text-align:center;font-size:clamp(.68rem,2vh,.9rem)}
+body.puzzle-screen #blockHint{flex:none;margin:5px 0;padding:6px 9px;font-size:clamp(.68rem,1.8vh,.8rem);line-height:1.25}
+body.puzzle-screen .block-board{flex:1;min-height:0;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));gap:clamp(3px,.7vmin,8px);margin:5px 0}
+body.puzzle-screen .block-tile{min-height:0;height:100%;padding:2px;font-size:clamp(.9rem,3vh,1.3rem);border-radius:9px}
+body.puzzle-screen .block-actions{flex:none;gap:6px;margin:4px 0}
+body.puzzle-screen .block-actions button,
+body.puzzle-screen #blockPlayArea>button{padding:8px 10px;font-size:.82rem}
+body.puzzle-screen .block-made{flex:none;min-height:0;max-height:34px;overflow:hidden;flex-wrap:nowrap;margin:3px 0}
+body.puzzle-screen .made-kanji{flex:none;padding:3px 8px;font-size:1rem}
+@media(max-width:500px){
+  body.puzzle-screen .app{padding:5px}
+  body.puzzle-screen #blocks>.card{padding:8px}
+  body.puzzle-screen #blockHint{max-height:52px;overflow:hidden}
+  body.puzzle-screen .block-tile{font-size:clamp(.85rem,4vw,1.15rem)}
+  body.puzzle-screen .block-actions button,
+  body.puzzle-screen #blockPlayArea>button{padding:7px 5px;font-size:.75rem}
+}
+@media(max-height:620px){
+  body.puzzle-screen #blockHint{display:none}
+  body.puzzle-screen #blocks>.card{padding:6px 10px}
+}
+</style>
+<style>
+body.puzzle-screen,body.puzzle-screen *{caret-color:transparent;cursor:default;-webkit-user-select:none;user-select:none}
+body.puzzle-screen button{cursor:pointer}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <h1>部首ラボ</h1>
+    <p>部首を知れば、漢字がもっとわかる。</p>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" class="screen active">
+    <div class="card">
+      <div class="menu-grid">
+        <button class="main-btn blue" onclick="showScreen('dictionary')">
+          📖<br>部首図鑑
+        </button>
+        <button class="main-btn purple" onclick="showScreen('levels')">
+          🎮<br>クイズに挑戦
+        </button>
+        <button class="main-btn gold" onclick="showScreen('results')">
+          🏆<br>成績を見る
+        </button>
+        <button class="main-btn green" onclick="showScreen('blocks')">
+          🧩<br>漢字ブロックパズル
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>このアプリの遊び方</h2>
+      <ol>
+        <li>まず「部首図鑑」で部首を学ぼう。</li>
+        <li>「クイズに挑戦」でレベルを選ぼう。</li>
+        <li>正解するとポイントを獲得！</li>
+        <li>間違えた問題は最後に復習できるよ。</li>
+        <li>「漢字ブロックパズル」では、部首やつくりを組み合わせて漢字を作ろう！</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- DICTIONARY -->
+  <section id="dictionary" class="screen">
+    <div class="card">
+      <h2>📖 部首図鑑</h2>
+      <p>気になる部首を選んでみよう。</p>
+      <p class="small" style="text-align:center;">全33種類の部首を収録！あし・かんむり・たれ・かまえなどの形も見てみよう。</p><div id="radicalGrid" class="radical-grid"></div>
+      <button class="back" onclick="showScreen('home')">← ホームへ戻る</button>
+    </div>
+  </section>
+
+  <!-- RADICAL DETAIL -->
+  <section id="radicalDetail" class="screen">
+    <div class="card">
+      <div id="radicalDetailContent"></div>
+      <button class="back" onclick="showScreen('dictionary')">← 部首図鑑へ戻る</button>
+    </div>
+  </section>
+
+  <!-- LEVELS -->
+  <section id="levels" class="screen">
+    <div class="card">
+      <h2>🎮 クイズに挑戦！</h2>
+      <p>レベルを選んで挑戦しよう。</p>
+      <div id="levelGrid" class="level-grid"></div>
+      <button class="back" onclick="showScreen('home')">← ホームへ戻る</button>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz" class="screen">
+    <div class="card">
+      <div class="status">
+        <span id="quizLevel"></span>
+        <span id="questionNumber"></span>
+        <span id="quizScore"></span>
+      </div>
+      <hr>
+      <div id="questionKanji" class="question-kanji"></div>
+      <h2 id="questionText" style="text-align:center;"></h2>
+      <div id="options" class="options"></div>
+      <div id="feedback" class="feedback"></div>
+      <button id="nextButton" class="green" style="width:100%; margin-top:16px; display:none;" onclick="nextQuestion()">
+        次の問題へ →
+      </button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="screen">
+    <div class="card">
+      <h2 style="text-align:center;">🏆 成績</h2>
+      <div id="resultContent"></div>
+      <button class="purple" style="width:100%;" onclick="showScreen('levels')">🎮 クイズに挑戦</button>
+      <button class="back" style="width:100%;" onclick="showScreen('home')">← ホームへ戻る</button>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section id="review" class="screen">
+    <div class="card">
+      <h2>🔄 間違えた問題を復習</h2>
+      <div id="reviewContent"></div>
+      <button class="back" onclick="showScreen('results')">← 結果画面へ戻る</button>
+    </div>
+  </section>
+
+  <footer>
+    情報通信技術活用論 2026
+  </footer>
+</div>
+
+
+  <!-- BLOCK PUZZLE -->
+  <section id="blocks" class="screen">
+    <div class="card">
+      <h2>🧩 漢字ブロックパズル</h2>
+      <div id="blockIntro">
+        <h3>🎮 遊び方・ルール</h3>
+        <ol>
+          <li>盤面に並んだ部品ブロックから、漢字を作れるものを選ぼう。</li>
+          <li><strong>「口（くち）」</strong>は単独の口の形（例：味）、<strong>「囗（くにがまえ）」</strong>は中を囲む形（例：国）だよ。パズルでは「口」と「囗（くにがまえ）」はどちらで代用しても正解になるよ。</li>
+          <li>漢字を作れる部品を選ぶと正解！「客」は「宀＋各」など、登録された漢字の組み合わせを判定するよ。</li>
+          <li>正解1つにつき<strong>100点</strong>！できるだけたくさん完成させよう。</li>
+          <li>制限時間は<strong>90秒</strong>。時間がなくなるとゲーム終了。</li>
+          <li>これ以上作れる組み合わせがなくなったら、盤面が自動で入れ替わるよ。自分で「新しい盤面」を押してもOK。残り時間とスコアはそのまま。</li>
+          <li>自己ベストは自動で保存されるよ。</li>
+        </ol>        <p class="small">準備ができたら「ゲームスタート」を押してね。押すまでは時間は減らないよ！</p>
+        <button class="green" onclick="startBlockGame()">▶ ゲームスタート</button>
+        <button class="back" onclick="showScreen('home')">← ホームへ戻る</button>
+      </div>
+      <div id="blockPlayArea" style="display:none">
+      <p>ブロックをタップして選択し、部首やつくりを組み合わせて漢字を作ろう！正しい組み合わせができると、ブロックが消えて漢字が完成するよ。</p>
+      <div class="status">
+        <span id="blockProgress">完成 0 / 40</span>
+        <span id="blockScore">スコア 0</span>
+        <span id="blockTimer">残り 90 秒</span>
+        <span id="blockBest">自己ベスト 0</span>
+      </div>
+      <p id="blockHint" class="meaning">制限時間90秒！ブロックを2つ以上選んで漢字を作ろう。正解すると消えて得点になるよ。<br><strong>見分け方：</strong>口＝くち（例：味）、囗＝くにがまえ・中を囲む形（例：国）。</p>
+      <div id="blockBoard" class="block-board"></div>
+      <div class="block-actions">
+        <button id="blockConfirm" class="green" style="display:none" onclick="confirmBlockCombination()">漢字を作る</button>
+        <button class="back" onclick="clearBlockSelection()">選択をやり直す</button>
+        <button class="purple" onclick="rerollBlockBoard()">🔀 新しい盤面</button>
+        <button class="back" onclick="showScreen('home')">← ホームへ戻る</button>
+      </div>
+      <p class="small">これ以上作れる組み合わせがなくなった場合は自動で盤面が入れ替わるよ。「新しい盤面」ボタンで自分から入れ替えることもできるよ。時間とスコアはそのまま続くよ。</p>
+      <div id="blockMade" class="block-made" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+
+<div id="timeUpOverlay" role="dialog" aria-modal="true" aria-labelledby="timeUpTitle">
+  <div class="timeup-panel">
+    <div class="timeup-icon">⏰</div>
+    <div id="timeUpTitle" class="timeup-title">TIME UP!</div>
+    <p>チャレンジ終了！おつかれさま！</p>
+    <div id="timeUpFinalScore" class="timeup-score">今回のスコア：0点</div>
+    <div id="timeUpFinalBest" class="timeup-best">自己ベスト：0点</div>
+    <div id="timeUpRemaining" class="timeup-remaining" aria-live="polite"></div>
+    <button class="green" onclick="closeTimeUpOverlay()">結果を見る</button>
+  </div>
+</div>
+
+<script>
+const appStorage = (() => {
+  try {
+    const store = window.localStorage;
+    const probe = "__bushu_labo_storage_check__";
+    store.setItem(probe, "1");
+    store.removeItem(probe);
+    return store;
+  } catch (error) {
+    const values = Object.create(null);
+    return {
+      getItem(key) { return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : null; },
+      setItem(key, value) { values[key] = String(value); },
+      removeItem(key) { delete values[key]; }
+    };
+  }
+})();
+// 初回起動時に以前の記録だけを消し、その後は新しい記録を保存します。
+const cleanStartKey = "kanjiQuizCleanStart_20261023";
+if (appStorage.getItem(cleanStartKey) !== "done") {
+  ["totalScore", "completedLevels", "lastMistakes", "blockBestScore"].forEach(key => appStorage.removeItem(key));
+  appStorage.setItem(cleanStartKey, "done");
+}
+
+const radicals = {
+  "氵": {name:"さんずい",meaning:"水に関係する意味を表すことが多い部首です。",examples:["海","河","池","湖","泳"],image:"💧"},
+  "日": {name:"ひ",meaning:"太陽や日、時間などに関係する漢字に使われます。",examples:["晴","明","暗","時","朝"],image:"☀️"},
+  "月": {name:"つき",meaning:"月や時間、身体に関係する漢字などに使われます。",examples:["朝","期","服","胸"],image:"🌙"},
+  "木": {name:"き・きへん",meaning:"木や植物などに関係する漢字に使われます。",examples:["林","森","植","橋"],image:"🌳"},
+  "金": {name:"かね・かねへん",meaning:"金属などに関係する漢字に使われます。",examples:["鉄","銀","銅","鋼"],image:"🪙"},
+  "火": {name:"ひ・ひへん",meaning:"火や熱などに関係する漢字に使われます。",examples:["灯","焼","炎","燃"],image:"🔥"},
+  "土": {name:"つち・つちへん",meaning:"土地や地面などに関係する漢字に使われます。",examples:["地","坂","城","場"],image:"🏔️"},
+  "口": {name:"くち",meaning:"単独の口の形です。中を囲む部首「囗（くにがまえ）」とは別です。例：味・呼・吸・唱。",examples:["味","呼","吸","唱"],image:"👄"},
+  "扌": {name:"て・てへん",meaning:"手の動作や働きに関係する漢字に使われます。",examples:["持","打","投","拾"],image:"✋"},
+  "忄": {name:"こころ・りっしんべん",meaning:"心や感情などに関係する漢字に使われます。",examples:["情","思","忙","怖"],image:"❤️"},
+  "訁": {name:"ことば・ごんべん",meaning:"言葉や話すことに関係する漢字に使われます。",examples:["話","語","読","記"],image:"💬"},
+  "亻": {name:"ひと・にんべん",meaning:"人や人の動作などに関係する漢字に使われます。",examples:["休","体","住","作"],image:"🧑"},
+  "女": {name:"おんな・おんなへん",meaning:"女性などに関係する漢字に使われます。",examples:["妹","姉","始","好"],image:"👩"},
+  "子": {name:"こ",meaning:"子どもや学びなどに関係する漢字に使われます。",examples:["字","学","孫","季"],image:"👶"},
+  "糸": {name:"いと・いとへん",meaning:"糸や布、つながりなどに関係する漢字に使われます。",examples:["紙","線","絵","組"],image:"🧵"},
+  "貝": {name:"かい",meaning:"貝や財貨などに関係する漢字に使われます。",examples:["買","貨","貯","貴"],image:"🐚"},
+  "車": {name:"くるま",meaning:"車や運搬などに関係する漢字に使われます。",examples:["転","輪","軍","軸"],image:"🚗"},
+  "足": {name:"あし・あしへん",meaning:"足や歩行・動作などに関係する漢字に使われます。",examples:["路","跳","踏","踊"],image:"🦶"},
+  "飠": {name:"しょく・しょくへん",meaning:"食べることや食べ物に関係する漢字に使われます。",examples:["飲","飯","館","養"],image:"🍚"},
+  "雨": {name:"あめ・あめかんむり",meaning:"雨や天候に関係する漢字に使われます。",examples:["雪","雲","電","雷"],image:"☔"},
+  "艹": {name:"くさかんむり",meaning:"草や植物に関係する漢字に使われることが多い",examples:["花","草","茶","荷"],image:"🌿"},
+  "宀": {name:"うかんむり",meaning:"家や建物などに関係する漢字に使われることがある",examples:["家","室","安","宿"],image:"🏠"},
+  "⺮": {name:"たけかんむり",meaning:"竹や竹製品などに関係する漢字に使われることがある",examples:["竹","笛","筆","箱"],image:"🎋"},
+  "灬": {name:"れっか・れんが",meaning:"火や熱に関係し、漢字の下側に置かれることが多い部首です。",examples:["点","照","熱","然"],image:"🔥"},
+  "冖": {name:"わかんむり",meaning:"上からおおう形の部首です。",examples:["冠","冥","軍","写"],image:"🧢"},
+  "尸": {name:"しかばね・しかばねだれ",meaning:"からだや場所などに関係し、漢字の上から左側をおおう部首です。",examples:["屋","居","局","届"],image:"🏠"},
+  "广": {name:"まだれ",meaning:"建物や場所に関係し、漢字の上から左側をおおう部首です。",examples:["店","庭","度","広"],image:"🏢"},
+  "厂": {name:"がんだれ",meaning:"崖や場所などに関係し、漢字の上から左側をおおう部首です。",examples:["厚","原","歴","厄"],image:"⛰️"},
+  "疒": {name:"やまいだれ",meaning:"病気や体の状態に関係し、漢字の上から左側をおおう部首です。",examples:["病","痛","疲","療"],image:"🩺"},
+  "門": {name:"もんがまえ",meaning:"門や出入りに関係し、漢字の外側を囲む部首です。",examples:["間","問","開","閉"],image:"🚪"},
+  "囗": {name:"くにがまえ",meaning:"口（くち）と似ていますが、こちらは中の部分をぐるりと囲む形です。例：国・園・回・図。",examples:["国","園","回","図"],image:"🖼️"},
+  "匚": {name:"はこがまえ",meaning:"箱や囲いに関係し、左側と下側を囲む部首です。",examples:["区","医","匠","匿"],image:"📦"},
+  "冂": {name:"けいがまえ",meaning:"外側から囲う形の部首です。",examples:["同","円","冊","再"],image:"⬜"}
+};
+
+const radicalPositions = {
+  "氵":"へん（左）", "日":"へん・かんむり", "月":"へん・かんむり", "木":"へん（左）", "金":"へん（左）",
+  "火":"へん（左）", "土":"へん（左）", "口":"へん（左）", "扌":"へん（左）", "忄":"へん（左）",
+  "訁":"へん（左）", "亻":"へん（左）", "女":"へん（左）", "子":"つくり・あし", "糸":"へん（左）",
+  "貝":"へん（左）", "車":"へん（左）", "足":"あし・へん（左）", "飠":"へん（左）", "雨":"かんむり（上）",
+  "艹":"かんむり（上）", "宀":"かんむり（上）", "⺮":"かんむり（上）", "灬":"あし（下）", "冖":"かんむり（上）",
+  "尸":"たれ（上から左）", "广":"たれ（上から左）", "厂":"たれ（上から左）", "疒":"たれ（上から左）",
+  "門":"かまえ（全体を囲む）", "囗":"かまえ（全体を囲む）", "匚":"かまえ（左と下を囲む）", "冂":"かまえ（上と左右を囲む）"
+};
+const levels = {
+  1:{name:"部首見習い",points:10,questionCount:10,questions:[
+    ["海","氵"],["河","氵"],["明","日"],["晴","日"],["林","木"],["鉄","金"],["灯","火"],["地","土"],["味","口"],["持","扌"],
+    ["跳","足"],["点","灬"],["冠","冖"],["屋","尸"],["店","广"],["厚","厂"],["病","疒"],["間","門"],["国","囗"],["区","匚"],["再","冂"]
+  ]},
+  2:{name:"漢字探偵",points:20,questionCount:15,questions:[
+    ["湖","氵"],["泳","氵"],["時","日"],["朝","月"],["植","木"],["橋","木"],["銀","金"],["焼","火"],["城","土"],["語","訁"],["体","亻"],["休","亻"],["情","忄"],["話","訁"],["線","糸"],
+    ["踊","足"],["照","灬"],["冥","冖"],["居","尸"],["庭","广"],["原","厂"],["痛","疒"],["問","門"],["園","囗"],["医","匚"],["同","冂"]
+  ]},
+  3:{name:"部首博士",points:30,questionCount:20,questions:[
+    ["銅","金"],["鋼","金"],["炎","火"],["燃","火"],["場","土"],["呼","口"],["吸","口"],["投","扌"],["拾","扌"],["忙","忄"],["怖","忄"],["記","訁"],["好","女"],["字","子"],["絵","糸"],["買","貝"],["転","車"],["路","足"],["飯","飠"],["雪","雨"],
+    ["熱","灬"],["写","冖"],["届","尸"],["度","广"],["歴","厂"],["疲","疒"],["開","門"],["回","囗"],["匠","匚"],["冊","冂"]
+  ]},
+  4:{name:"部首マスター",points:40,questionCount:20,questions:[
+    ["池","氵"],["暗","日"],["期","月"],["森","木"],["雷","雨"],["雲","雨"],["養","飠"],["館","飠"],["踏","足"],["輪","車"],["貨","貝"],["貯","貝"],["組","糸"],["紙","糸"],["姉","女"],["孫","子"],["住","亻"],["作","亻"],["読","訁"],["唱","口"],
+    ["然","灬"],["軍","冖"],["局","尸"],["広","广"],["厄","厂"],["療","疒"],["閉","門"],["図","囗"],["匿","匚"],["円","冂"]
+  ]}
+};
+
+let currentLevel = null;
+let currentQuestions = [];
+let currentQuestionIndex = 0;
+let currentScore = 0;
+let lastAnswer = null;
+let mistakes = [];
+let totalScore = 0;
+let completedLevels = JSON.parse(appStorage.getItem("completedLevels") || "[]");
+
+function showScreen(id) {
+  if (id !== "blocks" && typeof stopBlockTimer === "function") {
+    blockGameActive = false;
+    stopBlockTimer();
+  }
+  document.body.classList.toggle("puzzle-screen", id === "blocks");
+  if (id === "blocks") window.scrollTo(0, 0);
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  if (id === "dictionary") renderDictionary();
+  if (id === "levels") renderLevels();
+  if (id === "results") renderResults();
+  if (id === "review") renderReview();
+  if (id === "blocks") showBlockIntro();
+}
+
+function renderDictionary() {
+  const grid = document.getElementById("radicalGrid");
+  grid.innerHTML = "";
+  Object.entries(radicals).forEach(([symbol, data]) => {
+    const button = document.createElement("button");
+    button.className = "radical-card";
+    button.innerHTML = `
+      <div class="radical-symbol">${symbol}</div>
+      <strong>${data.name}</strong>
+      <p class="small">${radicalPositions[symbol] || "その他"}</p>
+      <p>${data.image}</p>
+      <p class="small">${data.examples.join("・")}</p>
+    `;
+    button.onclick = () => openRadical(symbol);
+    grid.appendChild(button);
+  });
+}
+
+function openRadical(symbol) {
+  const data = radicals[symbol];
+  document.getElementById("radicalDetailContent").innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-size:6rem;font-weight:bold;">${symbol}</div>
+      <h2>${data.name}</h2>
+      <p>${radicalPositions[symbol] || "その他"}</p>
+      <div style="font-size:4rem;">${data.image}</div>
+    </div>
+    <div class="meaning">
+      <strong>意味・イメージ</strong>
+      <p>${data.meaning}</p>
+    </div>
+    <h3>この部首を使う漢字</h3>
+    <div class="radical-grid">
+      ${data.examples.map(k => `<div class="card" style="text-align:center;margin:0;"><div style="font-size:2.5rem;font-weight:bold;">${k}</div></div>`).join("")}
+    </div>
+  `;
+  showScreen("radicalDetail");
+}
+
+function renderLevels() {
+  const grid = document.getElementById("levelGrid");
+  grid.innerHTML = "";
+  Object.entries(levels).forEach(([num, level]) => {
+    const unlocked = num === "1" || completedLevels.includes(Number(num) - 1);
+    const button = document.createElement("button");
+    button.className = num === "1" ? "blue" : num === "2" ? "purple" : "gold";
+    button.disabled = !unlocked;
+    button.innerHTML = `
+      ${unlocked ? "🔓" : "🔒"} LEVEL ${num}<br>
+      <strong>${level.name}</strong><br>
+      <span class="small">${level.points}点 × ${level.questionCount}問</span>
+    `;
+    if (unlocked) button.onclick = () => startQuiz(Number(num));
+    grid.appendChild(button);
+  });
+}
+
+const similarRadicals = {
+  "氵":["扌","忄","氵","雨","火"],
+  "日":["月","雨","口","木","火"],
+  "月":["日","木","肉","貝","糸"],
+  "木":["土","艹","⺮","十","火"],
+  "金":["貝","車","糸","土","木"],
+  "火":["日","土","氵","木","金"],
+  "土":["木","金","口","十","火"],
+  "口":["日","宀","訁","氵","土"],
+  "扌":["氵","亻","忄","足","木"],
+  "忄":["扌","氵","亻","女","訁"],
+  "訁":["口","扌","亻","忄","糸"],
+  "亻":["扌","忄","足","女","木"],
+  "女":["子","亻","忄","糸","口"],
+  "子":["女","宀","⺮","亻","糸"],
+  "糸":["貝","車","女","訁","飠"],
+  "貝":["金","糸","車","口","土"],
+  "車":["足","貝","金","木","⺮"],
+  "足":["車","亻","口","扌","土"],
+  "飠":["艹","氵","口","糸","木"],
+  "雨":["宀","⺮","日","氵","艹"],
+  "艹":["⺮","木","雨","宀","糸"],
+  "宀":["雨","⺮","子","口","艹"],
+  "⺮":["艹","宀","木","雨","十"],
+  "灬":["火","日","土","氵","艹"], "冖":["宀","雨","⺮","广","冂"], "尸":["广","厂","疒","匚","冂"],
+  "广":["尸","厂","疒","宀","匚"], "厂":["广","尸","疒","匚","土"], "疒":["尸","广","厂","忄","氵"],
+  "門":["囗","冂","匚","口","日"], "囗":["門","冂","匚","口","日"], "匚":["冂","囗","門","厂","匸"], "冂":["冖","囗","門","匚","月"]
+};
+
+const kanjiDistractors = {
+  "海":["毎"], "河":["可"], "明":["月"], "晴":["青"], "鉄":["失"],
+  "灯":["丁"], "地":["也"], "味":["未"], "持":["寺"], "湖":["胡"],
+  "泳":["永"], "時":["寺"], "朝":["十"], "植":["直"], "橋":["喬"],
+  "銀":["艮"], "焼":["尭"], "城":["成"], "語":["吾"], "体":["本"],
+  "休":["木"], "情":["青"], "話":["舌"], "線":["泉"], "銅":["同"],
+  "鋼":["岡"], "炎":["火"], "燃":["然"], "場":["昜"], "呼":["乎"],
+  "吸":["及"], "投":["殳"], "拾":["合"], "忙":["亡"], "怖":["布"],
+  "記":["己"], "好":["子"], "字":["宀"], "絵":["会"], "買":["罒"],
+  "転":["云"], "路":["各"], "飯":["反"], "雪":["彐"], "池":["也"],
+  "暗":["音"], "期":["其"], "森":["木"], "雷":["田"], "雲":["云"],
+  "養":["羊"], "館":["官"], "踏":["沓"], "輪":["侖"], "貨":["化"],
+  "貯":["宁"], "組":["且"], "紙":["氏"], "姉":["市"], "孫":["系"],
+  "住":["主"], "作":["乍"], "読":["売"], "唱":["昌"],
+  "跳":["兆"], "点":["占"], "冠":["元"], "屋":["至"], "店":["占"], "厚":["子"], "病":["丙"], "間":["日"], "国":["玉"], "区":["乂"], "再":["土"],
+  "踊":["甬"], "照":["召"], "冥":["六"], "居":["古"], "庭":["廷"], "原":["泉"], "痛":["甬"], "問":["口"], "園":["袁"], "医":["矢"], "同":["一"],
+  "熱":["埶"], "写":["与"], "届":["由"], "度":["又"], "歴":["止"], "疲":["皮"], "開":["开"], "回":["口"], "匠":["斤"], "冊":["一"],
+  "然":["犬"], "軍":["車"], "局":["口"], "広":["ム"], "厄":["卩"], "療":["尞"], "閉":["才"], "図":["斗"], "匿":["若"], "円":["一"]
+};
+function buildQuestions(levelNum) {
+  const source = levels[levelNum].questions.slice();
+  const count = levels[levelNum].questionCount;
+  const raw = shuffleArray(source).slice(0, count);
+  const symbols = Object.keys(radicals);
+  return raw.map(([kanji, answer]) => {
+    const candidates = [
+      ...(kanjiDistractors[kanji] || []),
+      ...(similarRadicals[answer] || symbols.filter(symbol => symbol !== answer))
+    ].filter((symbol, index, list) => symbol !== answer && list.indexOf(symbol) === index);
+    const distractors = shuffleArray(candidates).slice(0, 3);
+    const choices = shuffleArray([answer, ...distractors]);
+    return {kanji, answer, choices};
+  });
+}
+
+function startQuiz(levelNum) {
+  currentLevel = levelNum;
+  currentQuestionIndex = 0;
+  currentScore = 0;
+  mistakes = [];
+  currentQuestions = buildQuestions(levelNum);
+  showScreen("quiz");
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const level = levels[currentLevel];
+  const q = currentQuestions[currentQuestionIndex];
+
+  document.getElementById("quizLevel").textContent = `LEVEL ${currentLevel}：${level.name}`;
+  document.getElementById("questionNumber").textContent = `${currentQuestionIndex + 1} / ${currentQuestions.length}`;
+  document.getElementById("quizScore").textContent = `${currentScore} POINT`;
+  document.getElementById("questionKanji").textContent = q.kanji;
+  document.getElementById("questionText").textContent = "この漢字の部首はどれ？";
+
+  const options = document.getElementById("options");
+  options.innerHTML = "";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("nextButton").style.display = "none";
+
+  q.choices.forEach(choice => {
+    const button = document.createElement("button");
+    button.className = "option";
+    button.textContent = choice;
+    button.onclick = () => answerQuestion(choice, button);
+    options.appendChild(button);
+  });
+}
+
+function answerQuestion(choice, clickedButton) {
+  const level = levels[currentLevel];
+  const q = currentQuestions[currentQuestionIndex];
+  const allButtons = document.querySelectorAll(".option");
+
+  allButtons.forEach(b => b.disabled = true);
+
+  if (choice === q.answer) {
+    clickedButton.classList.add("correct");
+    currentScore += level.points;
+    totalScore += level.points;
+    appStorage.setItem("totalScore", totalScore);
+    showFeedback(true, q);
+  } else {
+    clickedButton.classList.add("wrong");
+    allButtons.forEach(b => {
+      if (b.textContent === q.answer) b.classList.add("correct");
+    });
+    mistakes.push(q);
+    showFeedback(false, q);
+  }
+
+  document.getElementById("quizScore").textContent = `${currentScore} POINT`;
+  document.getElementById("nextButton").style.display = "block";
+}
+
+function showFeedback(correct, q) {
+  const data = radicals[q.answer];
+  const feedback = document.getElementById("feedback");
+  feedback.className = "feedback show";
+
+  feedback.innerHTML = correct
+    ? `<strong>🎉 正解！</strong>
+       <p>「${q.kanji}」の部首は「${q.answer}（${data.name}）」です。</p>
+       <p>${data.meaning}</p>
+       <p><strong>部首の位置：</strong>${radicalPositions[q.answer] || "その他"}</p>
+       <p><strong>同じ部首を使う漢字：</strong>${data.examples.join("・")}</p>
+       <p><strong>＋${levels[currentLevel].points} POINT</strong></p>`
+    : `<strong>💡 正しい答えは「${q.answer}」</strong>
+       <p>「${q.kanji}」の部首は「${q.answer}（${data.name}）」です。</p>
+       <p>${data.meaning}</p>
+       <p><strong>同じ部首を使う漢字：</strong>${data.examples.join("・")}</p>`;
+}
+
+function nextQuestion() {
+  currentQuestionIndex++;
+
+  if (currentQuestionIndex >= currentQuestions.length) {
+    finishQuiz();
+  } else {
+    renderQuestion();
+  }
+}
+
+function finishQuiz() {
+  if (!completedLevels.includes(currentLevel)) {
+    completedLevels.push(currentLevel);
+    appStorage.setItem("completedLevels", JSON.stringify(completedLevels));
+  }
+
+  appStorage.setItem("lastMistakes", JSON.stringify(mistakes));
+  showScreen("results");
+}
+
+function getRank(score) {
+  if (score >= 300) return "👑 部首博士";
+  if (score >= 200) return "⭐ 部首達人";
+  if (score >= 100) return "📚 部首マスター";
+  if (score >= 50) return "🔎 漢字探偵";
+  return "🔰 部首見習い";
+}
+
+function renderResults() {
+  const savedScore = Number(appStorage.getItem("totalScore") || 0);
+  const puzzleBest = Number(appStorage.getItem("blockBestScore") || 0);
+  totalScore = savedScore;
+  const lastMistakes = JSON.parse(appStorage.getItem("lastMistakes") || "[]");
+
+  document.getElementById("resultContent").innerHTML = `
+    <div class="score-big">${savedScore}</div>
+    <p style="text-align:center;">TOTAL POINT</p>
+    <div class="rank">${getRank(savedScore)}</div>
+    <p style="text-align:center;font-size:1.1rem;font-weight:bold;">🧩 パズルの自己ベスト：${puzzleBest}点</p>
+    <hr>
+    <p style="text-align:center;">今回のクイズで間違えた問題：${lastMistakes.length}問</p>
+    ${lastMistakes.length
+      ? `<button class="green" style="width:100%;" onclick="showScreen('review')">🔄 間違えた問題を復習する</button>`
+      : `<p style="text-align:center;">🎉 間違えた問題はありません！</p>`}
+  `;
+}
+
+function renderReview() {
+  const list = JSON.parse(appStorage.getItem("lastMistakes") || "[]");
+  const container = document.getElementById("reviewContent");
+
+  if (!list.length) {
+    container.innerHTML = "<p>今回の間違えた問題はありません。</p>";
+    return;
+  }
+
+  container.innerHTML = list.map(q => {
+    const data = radicals[q.answer];
+    return `
+      <div class="mistake-item">
+        <strong style="font-size:2rem;">${q.kanji}</strong>
+        <p>正しい部首：<strong>${q.answer}（${data.name}）</strong></p>
+        <p>${data.meaning}</p>
+        <p>例：${data.examples.join("・")}</p>
+      </div>
+    `;
+  }).join("");
+}
+
+
+// 漢字ブロックパズル：制限時間・スコア・自己ベストつき
+const blockRecipes = [
+  {kanji:"明", parts:["日","月"], hint:"日＋月で「明」"},
+  {kanji:"林", parts:["木","木"], hint:"木＋木で「林」"},
+  {kanji:"森", parts:["木","木","木"], hint:"木が3つで「森」"},
+  {kanji:"姦", parts:["女","女","女"], hint:"女が3つで「姦」"},
+  {kanji:"品", parts:["口","口","口"], hint:"口が3つで「品」"},
+  {kanji:"晶", parts:["日","日","日"], hint:"日が3つで「晶」"},
+  {kanji:"字", parts:["宀","子"], hint:"うかんむり＋子で「字」"},
+  {kanji:"休", parts:["亻","木"], hint:"人べん＋木で「休」"},
+  {kanji:"好", parts:["女","子"], hint:"女＋子で「好」"},
+  {kanji:"河", parts:["氵","可"], hint:"さんずい＋可で「河」"},
+  {kanji:"海", parts:["氵","毎"], hint:"さんずい＋毎で「海」"},
+  {kanji:"語", parts:["訁","吾"], hint:"ごんべん＋吾で「語」"},
+  {kanji:"持", parts:["扌","寺"], hint:"てへん＋寺で「持」"},
+  {kanji:"話", parts:["訁","舌"], hint:"ごんべん＋舌で「話」"},
+  {kanji:"花", parts:["艹","化"], hint:"くさかんむり＋化で「花」"},
+  {kanji:"草", parts:["艹","早"], hint:"くさかんむり＋早で「草」"},
+  {kanji:"家", parts:["宀","豕"], hint:"うかんむり＋豕で「家」"},
+  {kanji:"安", parts:["宀","女"], hint:"うかんむり＋女で「安」"},
+  {kanji:"笛", parts:["⺮","由"], hint:"たけかんむり＋由で「笛」"},
+  {kanji:"路", parts:["足","各"], hint:"あしへん＋各で「路」"},
+  {kanji:"客", parts:["宀","各"], hint:"うかんむり＋各で「客」"},
+  {kanji:"杏", parts:["木","口"], hint:"木＋口で「杏」"},
+  {kanji:"如", parts:["女","口"], hint:"女＋口で「如」"},
+  {kanji:"杜", parts:["木","土"], hint:"木＋土で「杜」"},
+  {kanji:"吐", parts:["口","土"], hint:"口＋土で「吐」"},
+  {kanji:"古", parts:["十","口"], hint:"十＋口で「古」"},
+  {kanji:"李", parts:["木","子"], hint:"木＋子で「李」"},
+  {kanji:"杳", parts:["木","日"], hint:"木＋日で「杳」"},
+  {kanji:"間", parts:["門","日"], hint:"もんがまえ＋日で「間」"},
+  {kanji:"国", parts:["囗","玉"], hint:"くにがまえ＋玉で「国」"},
+  {kanji:"区", parts:["匚","乂"], hint:"はこがまえ＋乂で「区」"},
+  {kanji:"屋", parts:["尸","至"], hint:"しかばねだれ＋至で「屋」"},
+  {kanji:"店", parts:["广","占"], hint:"まだれ＋占で「店」"},
+  {kanji:"病", parts:["疒","丙"], hint:"やまいだれ＋丙で「病」"},
+  {kanji:"点", parts:["占","灬"], hint:"占＋れっかで「点」"},
+  {kanji:"跳", parts:["足","兆"], hint:"あしへん＋兆で「跳」"},
+  {kanji:"軍", parts:["冖","車"], hint:"わかんむり＋車で「軍」"},
+  {kanji:"匠", parts:["匚","斤"], hint:"はこがまえ＋斤で「匠」"},
+  {kanji:"同", parts:["冂","一","口"], hint:"けいがまえ＋一＋口で「同」"},
+  {kanji:"原", parts:["厂","泉"], hint:"がんだれ＋泉で「原」"},
+  {kanji:"宝", parts:["宀","玉"], hint:"うかんむり＋玉で「宝」"},
+  {kanji:"圧", parts:["厂","土"], hint:"がんだれ＋土で「圧」"},
+  {kanji:"詩", parts:["訁","寺"], hint:"ごんべん＋寺で「詩」"},
+  {kanji:"梅", parts:["木","毎"], hint:"きへん＋毎で「梅」"},
+  {kanji:"析", parts:["木","斤"], hint:"きへん＋斤で「析」"},
+  {kanji:"柄", parts:["木","丙"], hint:"きへん＋丙で「柄」"},
+  {kanji:"柚", parts:["木","由"], hint:"きへん＋由で「柚」"},
+  {kanji:"宙", parts:["宀","由"], hint:"うかんむり＋由で「宙」"},
+  {kanji:"什", parts:["亻","十"], hint:"にんべん＋十で「什」"},
+  {kanji:"問", parts:["門","口"], hint:"もんがまえ＋口で「問」"},
+  {kanji:"閑", parts:["門","木"], hint:"もんがまえ＋木で「閑」"},
+  {kanji:"困", parts:["囗","木"], hint:"くにがまえ＋木で「困」"},
+  {kanji:"床", parts:["广","木"], hint:"まだれ＋木で「床」"},
+  {kanji:"油", parts:["氵","由"], hint:"さんずい＋由で「油」"},
+  {kanji:"汁", parts:["氵","十"], hint:"さんずい＋十で「汁」"},
+  {kanji:"活", parts:["氵","舌"], hint:"さんずい＋舌で「活」"},
+  {kanji:"苦", parts:["艹","古"], hint:"くさかんむり＋古で「苦」"},
+  {kanji:"信", parts:["亻","訁"], hint:"にんべん＋言で「信」"},
+  {kanji:"計", parts:["訁","十"], hint:"ごんべん＋十で「計」"},
+  {kanji:"何", parts:["亻","可"], hint:"にんべん＋可で「何」"},
+  {kanji:"格", parts:["木","各"], hint:"きへん＋各で「格」"},
+  {kanji:"枯", parts:["木","古"], hint:"きへん＋古で「枯」"}
+];
+// クイズ収録漢字のうち、部首とつくりの組み合わせが明確なものもパズルに追加。
+const registeredPuzzleKanji = new Set(blockRecipes.map(recipe => recipe.kanji));
+const skipIncompleteParts = new Set(["朝","森","冠","厚","再","照","冥","同","度","歴","冊","然"]);
+Object.values(levels).forEach(level => {
+  level.questions.forEach(([kanji, answer]) => {
+    const components = kanjiDistractors[kanji];
+    if (!components || skipIncompleteParts.has(kanji) || registeredPuzzleKanji.has(kanji)) return;
+    const parts = [answer, ...components];
+    blockRecipes.push({kanji, parts, hint:`${parts.join("＋")}で「${kanji}」`});
+    registeredPuzzleKanji.add(kanji);
+  });
+});
+let blockTiles = [];
+let selectedBlockIds = [];
+let pendingBlockRecipeIndex = null;
+let completedRecipes = [];
+let blockGameScore = 0;
+let blockTileId = 0;
+let blockTimeLeft = 90;
+let blockTimerId = null;
+let blockGameActive = false;
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+const blockExtraParts = ["口","火","氵","訁","亻","古","土","貝","足","雨","金","糸","女","木","日","月","艹","宀","⺮","灬","冖","尸","广","厂","疒","門","囗","匚","冂","可","毎","早","由","各","豕","吾","寺","舌","化","十","子","玉","乂","至","占","丙","兆","斤","一","泉"];
+function buildBlockBoard() {
+  blockTileId = 0;
+  blockTiles = [];
+  const remaining = blockRecipes
+    .map((recipe, index) => ({recipe, index}))
+    .filter(item => !completedRecipes.includes(item.index));
+  const recipePartLimit = 25;
+  let recipePartCount = 0;
+  shuffleArray(remaining).forEach(({recipe, index}) => {
+    if (recipePartCount + recipe.parts.length > recipePartLimit) return;
+    recipe.parts.forEach(part => blockTiles.push({id:blockTileId++, text:part, recipeIndex:index, used:false}));
+    recipePartCount += recipe.parts.length;
+  });
+  const extraCount = 30 - blockTiles.length;
+  const extraPool = shuffleArray(blockExtraParts.slice());
+  for (let i = 0; i < extraCount; i++) {
+    const part = extraPool[i % extraPool.length];
+    blockTiles.push({id:blockTileId++, text:part, recipeIndex:-1, used:false});
+  }
+  shuffleArray(blockTiles);
+}
+function getBlockBest() {
+  return Number(appStorage.getItem("blockBestScore") || 0);
+}
+function updateBlockStatus() {
+  document.getElementById("blockProgress").textContent = `完成 ${completedRecipes.length} / ${blockRecipes.length}`;
+  document.getElementById("blockScore").textContent = `スコア ${blockGameScore}`;
+  document.getElementById("blockTimer").textContent = `残り ${blockTimeLeft} 秒`;
+  document.getElementById("blockTimer").classList.toggle("block-timer-low", blockTimeLeft <= 15);
+  document.getElementById("blockBest").textContent = `自己ベスト ${getBlockBest()}`;
+}
+function stopBlockTimer() {
+  if (blockTimerId !== null) {
+    clearInterval(blockTimerId);
+    blockTimerId = null;
+  }
+}
+function startBlockTimer() {
+  stopBlockTimer();
+  blockTimerId = setInterval(() => {
+    if (!blockGameActive) return;
+    blockTimeLeft--;
+    updateBlockStatus();
+    if (blockTimeLeft <= 0) endBlockGame();
+  }, 1000);
+}
+function showBlockIntro() {
+  clearPendingBlockMatch();
+  // 前回の終了ダイアログが残って操作を塞がないよう、パズルを開くたびに閉じる。
+  document.getElementById("timeUpOverlay")?.classList.remove("show");
+  stopBlockTimer();
+  blockGameActive = false;
+  document.getElementById("blockIntro").style.display = "block";
+  document.getElementById("blockPlayArea").style.display = "none";
+  const oldEnd = document.getElementById("blockEnd");
+  if (oldEnd) oldEnd.remove();
+}
+function startBlockGame() {
+  document.getElementById("blockIntro").style.display = "none";
+  document.getElementById("blockPlayArea").style.display = "flex";
+  stopBlockTimer();
+  blockTileId = 0;
+  selectedBlockIds = [];
+  clearPendingBlockMatch();
+  completedRecipes = [];
+  blockGameScore = 0;
+  blockTimeLeft = 90;
+  blockGameActive = true;
+  blockTiles = [];
+
+  buildBlockBoard();
+  document.getElementById("blockMade").innerHTML = "";
+  document.getElementById("blockHint").textContent = "制限時間90秒！正しい部品を組み合わせると漢字が完成して消えるよ。";
+  const oldEnd = document.getElementById("blockEnd");
+  if (oldEnd) oldEnd.remove();
+  renderBlockBoard();
+  startBlockTimer();
+}
+function rerollBlockBoard(reason = "manual") {
+  if (!blockGameActive) {
+    startBlockGame();
+    return;
+  }
+  selectedBlockIds = [];
+  clearPendingBlockMatch();
+  buildBlockBoard();
+  document.getElementById("blockHint").textContent = reason === "auto"
+    ? "🔀 これ以上作れる組み合わせがないので、盤面を自動で入れ替えたよ！残り時間とスコアはそのまま。"
+    : "盤面を入れ替えたよ！残り時間とスコアはそのまま。";
+  renderBlockBoard();
+}
+function blockPartAliases(part) {
+  const equivalentParts = [["口","囗"],["亻","人"],["訁","言"],["扌","手"],["氵","水"],["艹","艸"],["⺮","竹"],["灬","火"]];
+  return equivalentParts.find(group => group.includes(part)) || [part];
+}
+function findRecipeTiles(parts, tiles) {
+  const aliases = blockPartAliases;
+  const chosen = [];
+  function assign(partIndex) {
+    if (partIndex >= parts.length) return true;
+    const expected = parts[partIndex];
+    for (let i = 0; i < tiles.length; i++) {
+      if (chosen.includes(i) || !aliases(expected).includes(tiles[i].text)) continue;
+      chosen.push(i);
+      if (assign(partIndex + 1)) return true;
+      chosen.pop();
+    }
+    return false;
+  }
+  return assign(0) ? chosen.map(index => tiles[index]) : null;
+}
+function canMakeRecipeFromBoard(recipe) {
+  return findRecipeTiles(recipe.parts, blockTiles.filter(t => !t.used)) !== null;
+}
+function autoRerollIfNoCombinations() {
+  const remainingRecipes = blockRecipes.filter((recipe, index) =>
+    !completedRecipes.includes(index)
+  );
+  if (remainingRecipes.length === 0) return;
+  const hasCombination = remainingRecipes.some(canMakeRecipeFromBoard);
+  if (!hasCombination) rerollBlockBoard("auto");
+}
+function renderBlockBoard() {
+  const board = document.getElementById("blockBoard");
+  board.innerHTML = "";
+  blockTiles.forEach(tile => {
+    const btn = document.createElement("button");
+    btn.className = "block-tile" + (selectedBlockIds.includes(tile.id) ? " selected" : "") + (tile.used ? " used" : "");
+    btn.textContent = tile.text;
+    btn.disabled = tile.used || !blockGameActive;
+    btn.setAttribute("aria-pressed", selectedBlockIds.includes(tile.id) ? "true" : "false");
+    btn.onclick = () => toggleBlock(tile.id);
+    board.appendChild(btn);
+  });
+  updateBlockStatus();
+}
+function toggleBlock(id) {
+  if (!blockGameActive) return;
+  clearPendingBlockMatch();
+  if (selectedBlockIds.includes(id)) selectedBlockIds = selectedBlockIds.filter(x => x !== id);
+  else selectedBlockIds.push(id);
+  checkBlockCombination();
+  renderBlockBoard();
+}
+function clearBlockSelection() {
+  selectedBlockIds = [];
+  clearPendingBlockMatch();
+  document.getElementById("blockHint").textContent = "選択をリセットしたよ。別の組み合わせを試そう。";
+  renderBlockBoard();
+}
+function closeTimeUpOverlay() {
+  document.getElementById("timeUpOverlay").classList.remove("show");
+}
+function endBlockGame(reason = "timeout") {
+  if (!blockGameActive) return;
+  blockGameActive = false;
+  stopBlockTimer();
+  const best = getBlockBest();
+  document.getElementById("timeUpFinalScore").textContent =
+    "今回のスコア：" + blockGameScore + "点";
+  document.getElementById("timeUpFinalBest").textContent =
+    "自己ベスト：" + best + "点";
+  const remaining = blockRecipes
+    .map((recipe, index) => ({recipe, index}))
+    .filter(({recipe, index}) => !completedRecipes.includes(index) && canMakeRecipeFromBoard(recipe));
+  const remainingBox = document.getElementById("timeUpRemaining");
+  remainingBox.replaceChildren();
+  if (remaining.length) {
+    const heading = document.createElement("strong");
+    heading.textContent = "まだ作れた組み合わせ（" + remaining.length + "）";
+    const list = document.createElement("ul");
+    remaining.forEach(({recipe}) => {
+      const item = document.createElement("li");
+      item.textContent = recipe.kanji + "（" + recipe.parts.join("＋") + "）";
+      list.appendChild(item);
+    });
+    remainingBox.append(heading, list);
+  } else {
+    remainingBox.textContent = "残っている組み合わせはありません。";
+  }
+  document.getElementById("timeUpTitle").textContent =
+    reason === "clear" ? "GAME CLEAR!" : "TIME UP!";
+  document.querySelector("#timeUpOverlay .timeup-icon").textContent =
+    reason === "clear" ? "🏆" : "⏰";
+  document.querySelector("#timeUpOverlay .timeup-panel p").textContent =
+    reason === "clear" ? "すべての漢字を完成！おめでとう！" : "チャレンジ終了！おつかれさま！";
+  document.getElementById("timeUpOverlay").classList.add("show");
+  const hint = document.getElementById("blockHint");
+  if (hint) hint.textContent = reason === "clear"
+    ? "ゲームクリア！今回のスコア：" + blockGameScore + "点"
+    : "タイムアップ！今回のスコア：" + blockGameScore + "点";
+}
+function clearPendingBlockMatch() {
+  pendingBlockRecipeIndex = null;
+  const button = document.getElementById("blockConfirm");
+  if (button) button.style.display = "none";
+}
+function canCompleteRecipeWithSelection(parts, requiredTiles, availableTiles) {
+  const aliases = blockPartAliases;
+  const requiredIds = new Set(requiredTiles.map(tile => tile.id));
+  const chosenIds = new Set();
+  function assign(partIndex) {
+    if (partIndex >= parts.length) return [...requiredIds].every(id => chosenIds.has(id));
+    for (const tile of availableTiles) {
+      if (chosenIds.has(tile.id) || !aliases(parts[partIndex]).includes(tile.text)) continue;
+      chosenIds.add(tile.id);
+      if (assign(partIndex + 1)) return true;
+      chosenIds.delete(tile.id);
+    }
+    return false;
+  }
+  return assign(0);
+}
+function completeBlockRecipe(match, selected) {
+  const usedTiles = findRecipeTiles(match.recipe.parts, selected);
+  if (!usedTiles) return;
+  clearPendingBlockMatch();
+  usedTiles.forEach(t => t.used = true);
+  completedRecipes.push(match.index);
+  selectedBlockIds = selectedBlockIds.filter(id => !usedTiles.some(t => t.id === id));
+  blockGameScore += 100;
+  const best = Math.max(getBlockBest(), blockGameScore);
+  appStorage.setItem("blockBestScore", String(best));
+  const otherExamples = blockRecipes
+    .filter((recipe, index) => index !== match.index && recipe.parts.length <= selected.length)
+    .filter(recipe => findRecipeTiles(recipe.parts, selected) !== null)
+    .slice(0, 3)
+    .map(recipe => recipe.kanji + "（" + recipe.parts.join("＋") + "）");
+  const exampleText = otherExamples.length
+    ? " 同じ選び方で、ほかにも " + otherExamples.join("・") + " が作れるよ。"
+    : "";
+  document.getElementById("blockHint").textContent = "🎉 正解！「" + match.recipe.kanji + "」が完成！ " + match.recipe.hint + " ＋100点" + exampleText;
+  const made = document.createElement("div");
+  made.className = "made-kanji";
+  made.textContent = match.recipe.kanji + " ✓";
+  document.getElementById("blockMade").appendChild(made);
+  if (completedRecipes.length === blockRecipes.length) {
+    document.getElementById("blockHint").textContent = "🏆 全" + blockRecipes.length + "種類クリア！ " + blockGameScore + "点！";
+    endBlockGame("clear");
+    return;
+  }
+  autoRerollIfNoCombinations();
+}
+function confirmBlockCombination() {
+  if (pendingBlockRecipeIndex === null || !blockGameActive) return;
+  const selected = blockTiles.filter(tile => selectedBlockIds.includes(tile.id));
+  const recipe = blockRecipes[pendingBlockRecipeIndex];
+  if (!recipe || !findRecipeTiles(recipe.parts, selected)) {
+    clearPendingBlockMatch();
+    return;
+  }
+  completeBlockRecipe({recipe, index: pendingBlockRecipeIndex}, selected);
+  renderBlockBoard();
+}
+function checkBlockCombination() {
+  const selected = blockTiles.filter(t => selectedBlockIds.includes(t.id));
+  if (selected.length < 2) return;
+
+  // 3個以上の正解を優先し、短い正解が長い正解を先に消さないようにする。
+  const recipesBySize = blockRecipes
+    .map((recipe, index) => ({recipe, index}))
+    .filter(item => !completedRecipes.includes(item.index))
+    .sort((a, b) => b.recipe.parts.length - a.recipe.parts.length);
+  const match = recipesBySize.find(({recipe}) =>
+    recipe.parts.length <= selected.length && findRecipeTiles(recipe.parts, selected) !== null
+  );
+  if (match) {
+    const larger = recipesBySize.find(({recipe}) =>
+      recipe.parts.length > selected.length &&
+      canCompleteRecipeWithSelection(recipe.parts, selected, blockTiles.filter(tile => !tile.used))
+    );
+    if (larger) {
+      pendingBlockRecipeIndex = match.index;
+      const button = document.getElementById("blockConfirm");
+      button.textContent = "「" + match.recipe.kanji + "」を作る";
+      button.style.display = "inline-flex";
+      document.getElementById("blockHint").textContent = "「" + match.recipe.kanji + "」は今作れるよ。もう部品を選ぶと「" + larger.recipe.kanji + "」も作れるよ。「" + match.recipe.kanji + "」を作るならボタンを押してね。";
+      return;
+    }
+    completeBlockRecipe(match, selected);
+  } else if (selected.length >= 3) {
+    document.getElementById("blockHint").textContent = "その組み合わせは、このゲームに登録されていないみたい。選択をやり直すか、新しい盤面を試してみよう。";
+  }
+}
+
+
+totalScore = Number(appStorage.getItem("totalScore") || 0);
+renderDictionary();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
